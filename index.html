@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reported Speech Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .correct-bg { background-color: #dcfce7 !important; border-color: #22c55e !important; }
+        .incorrect-bg { background-color: #fee2e2 !important; border-color: #ef4444 !important; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header & Gamification Bar -->
+    <header class="bg-indigo-600 text-white shadow-md p-4 flex justify-between items-center z-10 shrink-0">
+        <h1 class="text-2xl font-bold flex items-center gap-2">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+            Reported Speech Master
+        </h1>
+        <div class="flex items-center gap-4">
+            <div class="flex flex-col items-end mr-4 border-r border-indigo-400 pr-4 hidden sm:flex">
+                <label for="userName" class="text-xs text-indigo-200 mb-1">Student Name</label>
+                <input type="text" id="userName" placeholder="Enter your name..." class="bg-indigo-700 text-white placeholder-indigo-300 border border-indigo-400 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-white w-48 transition-colors" onchange="saveName(this.value)">
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-indigo-200">Total Score</p>
+                <p class="text-xl font-bold" id="global-score">0 / 0</p>
+            </div>
+            <button onclick="generatePDF()" class="bg-green-500 hover:bg-green-400 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-200 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Get PDF Report
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-white border-r border-gray-200 overflow-y-auto shrink-0 flex flex-col">
+            <div class="p-4 border-b border-gray-100 font-semibold text-gray-600">Exercises</div>
+            <nav id="nav-menu" class="flex-1 p-2 space-y-1">
+                <!-- Nav items generated via JS -->
+            </nav>
+            <div class="p-4 bg-gray-50 border-t border-gray-200">
+                <p class="text-xs text-gray-500 mb-1">Overall Progress</p>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="overall-progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-6 bg-gray-50 relative">
+            <div id="exercise-container" class="max-w-3xl mx-auto pb-20">
+                <!-- Exercise content loaded here -->
+                <div class="text-center mt-20 text-gray-400">
+                    <svg class="w-16 h-16 mx-auto mb-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <p class="text-xl">Select an exercise from the menu to begin.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Data Structure for Exercises
+        const exercisesData = [
+            {
+                id: 'ex1',
+                title: 'Exercise 1',
+                tense: 'Present Simple',
+                description: 'When reporting present simple, the verb typically changes to past simple.',
+                questions: [
+                    { id: 'ex1_q1', type: 'mcq', prompt: 'Direct: "I like ice cream," she said.', options: ['She said she likes ice cream.', 'She said she liked ice cream.', 'She said she had liked ice cream.'], answer: 1, explanation: '"like" changes to "liked".' },
+                    { id: 'ex1_q2', type: 'mcq', prompt: 'Direct: "He works in a bank," John told me.', options: ['John told me he worked in a bank.', 'John told me he works in a bank.', 'John told me he was working in a bank.'], answer: 0, explanation: '"works" changes to "worked".' },
+                    { id: 'ex1_q3', type: 'mcq', prompt: 'Direct: "We play tennis every weekend," they said.', options: ['They said they play tennis every weekend.', 'They said they had played tennis every weekend.', 'They said they played tennis every weekend.'], answer: 2, explanation: '"play" changes to "played".' },
+                    { id: 'ex1_q4', type: 'mcq', prompt: 'Direct: "I don\'t know the answer," he said.', options: ['He said he didn\'t know the answer.', 'He said he doesn\'t know the answer.', 'He said he hadn\'t known the answer.'], answer: 0, explanation: '"don\'t know" changes to "didn\'t know".' },
+                    { id: 'ex1_q5', type: 'fill', prompt: 'Direct: "She lives in Paris," he said.', textBefore: 'He said that she ', textAfter: ' in Paris.', answer: 'lived', explanation: '"lives" becomes "lived".' },
+                    { id: 'ex1_q6', type: 'fill', prompt: 'Direct: "They study English," the teacher said.', textBefore: 'The teacher said that they ', textAfter: ' English.', answer: 'studied', explanation: '"study" becomes "studied".' },
+                    { id: 'ex1_q7', type: 'fill', prompt: 'Direct: "I want a new car," Paul said.', textBefore: 'Paul said that he ', textAfter: ' a new car.', answer: 'wanted', explanation: '"want" becomes "wanted".' },
+                    { id: 'ex1_q8', type: 'fill', prompt: 'Direct: "We don\'t travel much," they told us.', textBefore: 'They told us that they ', textAfter: ' much.', answer: "didn't travel", explanation: '"don\'t travel" becomes "didn\'t travel".' },
+                    { id: 'ex1_q9', type: 'type', prompt: 'Direct: "I am happy," she said. (Convert to reported speech)', answer: 'She said she was happy.', explanation: 'Change "am" to "was".' },
+                    { id: 'ex1_q10', type: 'type', prompt: 'Direct: "He drives carefully," she noted. (Convert to reported speech)', answer: 'She noted he drove carefully.', explanation: 'Change "drives" to "drove".' },
+                    { id: 'ex1_q11', type: 'type', prompt: 'Direct: "They have a big house," he said. (Convert to reported speech)', answer: 'He said they had a big house.', explanation: 'Change "have" to "had".' },
+                    { id: 'ex1_q12', type: 'type', prompt: 'Direct: "It rains a lot here," the guide told us. (Convert to reported speech, ignore "here" change for now)', answer: 'The guide told us it rained a lot here.', explanation: 'Change "rains" to "rained".' },
+                ]
+            },
+            {
+                id: 'ex2',
+                title: 'Exercise 2',
+                tense: 'Present Continuous',
+                description: 'When reporting present continuous, the verb typically changes to past continuous.',
+                questions: [
+                    { id: 'ex2_q1', type: 'mcq', prompt: 'Direct: "I am reading a book," she said.', options: ['She said she is reading a book.', 'She said she was reading a book.', 'She said she had been reading a book.'], answer: 1, explanation: '"am reading" changes to "was reading".' },
+                    { id: 'ex2_q2', type: 'mcq', prompt: 'Direct: "He is sleeping," they told me.', options: ['They told me he was sleeping.', 'They told me he sleeps.', 'They told me he is sleeping.'], answer: 0, explanation: '"is sleeping" changes to "was sleeping".' },
+                    { id: 'ex2_q3', type: 'mcq', prompt: 'Direct: "We are watching TV," the kids said.', options: ['The kids said they watched TV.', 'The kids said they are watching TV.', 'The kids said they were watching TV.'], answer: 2, explanation: '"are watching" changes to "were watching".' },
+                    { id: 'ex2_q4', type: 'mcq', prompt: 'Direct: "It is raining," he noticed.', options: ['He noticed it was raining.', 'He noticed it is raining.', 'He noticed it rained.'], answer: 0, explanation: '"is raining" changes to "was raining".' },
+                    { id: 'ex2_q5', type: 'fill', prompt: 'Direct: "I am making dinner," mom said.', textBefore: 'Mom said she ', textAfter: ' dinner.', answer: 'was making', explanation: '"am making" becomes "was making".' },
+                    { id: 'ex2_q6', type: 'fill', prompt: 'Direct: "They are playing outside," he said.', textBefore: 'He said they ', textAfter: ' outside.', answer: 'were playing', explanation: '"are playing" becomes "were playing".' },
+                    { id: 'ex2_q7', type: 'fill', prompt: 'Direct: "She is listening to music," John said.', textBefore: 'John said she ', textAfter: ' to music.', answer: 'was listening', explanation: '"is listening" becomes "was listening".' },
+                    { id: 'ex2_q8', type: 'fill', prompt: 'Direct: "We are not going out," they told us.', textBefore: 'They told us they ', textAfter: ' out.', answer: "weren't going", explanation: '"are not going" becomes "weren\'t going" or "were not going".' },
+                    { id: 'ex2_q9', type: 'type', prompt: 'Direct: "I am writing an email," she said.', answer: 'She said she was writing an email.', explanation: 'Change "am writing" to "was writing".' },
+                    { id: 'ex2_q10', type: 'type', prompt: 'Direct: "The dog is barking," he complained.', answer: 'He complained the dog was barking.', explanation: 'Change "is barking" to "was barking".' },
+                    { id: 'ex2_q11', type: 'type', prompt: 'Direct: "We are studying for the test," the students said.', answer: 'The students said they were studying for the test.', explanation: 'Change "are studying" to "were studying".' },
+                    { id: 'ex2_q12', type: 'type', prompt: 'Direct: "He is not working today," the manager said.', answer: 'The manager said he was not working today.', explanation: 'Change "is not working" to "was not working".' },
+                ]
+            },
+            {
+                id: 'ex3',
+                title: 'Exercise 3',
+                tense: 'Past Simple',
+                description: 'When reporting past simple, the verb typically changes to past perfect (had + V3).',
+                questions: [
+                    { id: 'ex3_q1', type: 'mcq', prompt: 'Direct: "I saw a movie," she said.', options: ['She said she saw a movie.', 'She said she had seen a movie.', 'She said she has seen a movie.'], answer: 1, explanation: '"saw" changes to "had seen".' },
+                    { id: 'ex3_q2', type: 'mcq', prompt: 'Direct: "He arrived late," they told me.', options: ['They told me he arrived late.', 'They told me he had arrived late.', 'They told me he has arrived late.'], answer: 1, explanation: '"arrived" changes to "had arrived".' },
+                    { id: 'ex3_q3', type: 'mcq', prompt: 'Direct: "We finished the project," the team said.', options: ['The team said they finished the project.', 'The team said they had finished the project.', 'The team said they finish the project.'], answer: 1, explanation: '"finished" changes to "had finished".' },
+                    { id: 'ex3_q4', type: 'mcq', prompt: 'Direct: "It rained yesterday," he noted.', options: ['He noted it rained the day before.', 'He noted it had rained the day before.', 'He noted it has rained the day before.'], answer: 1, explanation: '"rained" changes to "had rained". ("yesterday" also changes to "the day before")' },
+                    { id: 'ex3_q5', type: 'fill', prompt: 'Direct: "I broke the glass," she admitted.', textBefore: 'She admitted she ', textAfter: ' the glass.', answer: 'had broken', explanation: '"broke" becomes "had broken".' },
+                    { id: 'ex3_q6', type: 'fill', prompt: 'Direct: "They went to Spain," he said.', textBefore: 'He said they ', textAfter: ' to Spain.', answer: 'had gone', explanation: '"went" becomes "had gone".' },
+                    { id: 'ex3_q7', type: 'fill', prompt: 'Direct: "She ate the cake," John said.', textBefore: 'John said she ', textAfter: ' the cake.', answer: 'had eaten', explanation: '"ate" becomes "had eaten".' },
+                    { id: 'ex3_q8', type: 'fill', prompt: 'Direct: "We didn\'t see him," they told us.', textBefore: 'They told us they ', textAfter: ' him.', answer: "hadn't seen", explanation: '"didn\'t see" becomes "hadn\'t seen".' },
+                    { id: 'ex3_q9', type: 'type', prompt: 'Direct: "I wrote a letter," she said.', answer: 'She said she had written a letter.', explanation: 'Change "wrote" to "had written".' },
+                    { id: 'ex3_q10', type: 'type', prompt: 'Direct: "He lost his keys," she complained.', answer: 'She complained he had lost his keys.', explanation: 'Change "lost" to "had lost".' },
+                    { id: 'ex3_q11', type: 'type', prompt: 'Direct: "We visited the museum," the tourists said.', answer: 'The tourists said they had visited the museum.', explanation: 'Change "visited" to "had visited".' },
+                    { id: 'ex3_q12', type: 'type', prompt: 'Direct: "He didn\'t come," the manager said.', answer: 'The manager said he had not come.', explanation: 'Change "didn\'t come" to "had not come".' },
+                ]
+            },
+            {
+                id: 'ex4',
+                title: 'Exercise 4',
+                tense: 'Future Simple (Will)',
+                description: 'When reporting future simple, "will" changes to "would".',
+                questions: [
+                    { id: 'ex4_q1', type: 'mcq', prompt: 'Direct: "I will call you," she said.', options: ['She said she will call me.', 'She said she would call me.', 'She said she calls me.'], answer: 1, explanation: '"will" changes to "would".' },
+                    { id: 'ex4_q2', type: 'mcq', prompt: 'Direct: "He will help us," they told me.', options: ['They told me he will help us.', 'They told me he would help us.', 'They told me he helped us.'], answer: 1, explanation: '"will" changes to "would".' },
+                    { id: 'ex4_q3', type: 'mcq', prompt: 'Direct: "We will win the match," the team said.', options: ['The team said they won the match.', 'The team said they will win the match.', 'The team said they would win the match.'], answer: 2, explanation: '"will" changes to "would".' },
+                    { id: 'ex4_q4', type: 'mcq', prompt: 'Direct: "It will rain tomorrow," he noted.', options: ['He noted it will rain the next day.', 'He noted it would rain the next day.', 'He noted it rained the next day.'], answer: 1, explanation: '"will" changes to "would".' },
+                    { id: 'ex4_q5', type: 'fill', prompt: 'Direct: "I will buy a car," she promised.', textBefore: 'She promised she ', textAfter: ' a car.', answer: 'would buy', explanation: '"will buy" becomes "would buy".' },
+                    { id: 'ex4_q6', type: 'fill', prompt: 'Direct: "They will arrive soon," he said.', textBefore: 'He said they ', textAfter: ' soon.', answer: 'would arrive', explanation: '"will arrive" becomes "would arrive".' },
+                    { id: 'ex4_q7', type: 'fill', prompt: 'Direct: "She will sing a song," John said.', textBefore: 'John said she ', textAfter: ' a song.', answer: 'would sing', explanation: '"will sing" becomes "would sing".' },
+                    { id: 'ex4_q8', type: 'fill', prompt: 'Direct: "We will not go," they told us.', textBefore: 'They told us they ', textAfter: ' go.', answer: "wouldn't", explanation: '"will not" becomes "wouldn\'t" or "would not".' },
+                    { id: 'ex4_q9', type: 'type', prompt: 'Direct: "I will read the report," she said.', answer: 'She said she would read the report.', explanation: 'Change "will" to "would".' },
+                    { id: 'ex4_q10', type: 'type', prompt: 'Direct: "He will fix the computer," she said.', answer: 'She said he would fix the computer.', explanation: 'Change "will" to "would".' },
+                    { id: 'ex4_q11', type: 'type', prompt: 'Direct: "We will start the meeting," the manager said.', answer: 'The manager said they would start the meeting.', explanation: 'Change "will" to "would".' },
+                    { id: 'ex4_q12', type: 'type', prompt: 'Direct: "He won\'t forget," she said.', answer: 'She said he would not forget.', explanation: 'Change "won\'t" to "would not" or "wouldn\'t".' },
+                ]
+            }
+        ];
+
+        // State Management
+        let userState = JSON.parse(localStorage.getItem('reportedSpeechState')) || {
+            answers: {}, // { questionId: { isCorrect: boolean, userAnswer: string } }
+            score: 0,
+            totalQuestions: 0,
+            name: ''
+        };
+        let currentExerciseId = null;
+
+        // Initialize Total Questions count if not set or changed
+        let totalQ = 0;
+        exercisesData.forEach(ex => totalQ += ex.questions.length);
+        userState.totalQuestions = totalQ;
+
+        // DOM Elements
+        const navMenu = document.getElementById('nav-menu');
+        const exerciseContainer = document.getElementById('exercise-container');
+        const globalScoreEl = document.getElementById('global-score');
+        const progressBarEl = document.getElementById('overall-progress-bar');
+
+        // Initialization
+        function init() {
+            renderNav();
+            updateGamification();
+            
+            // Load name
+            if (userState.name) {
+                document.getElementById('userName').value = userState.name;
+            }
+            
+            // Auto-load first exercise or last viewed
+            if (exercisesData.length > 0) {
+                loadExercise(exercisesData[0].id);
+            }
+        }
+
+        function saveName(name) {
+            userState.name = name.trim();
+            saveState();
+        }
+
+        function saveState() {
+            localStorage.setItem('reportedSpeechState', JSON.stringify(userState));
+            updateGamification();
+        }
+
+        function updateGamification() {
+            let correctCount = 0;
+            let answeredCount = 0;
+            for (const key in userState.answers) {
+                answeredCount++;
+                if (userState.answers[key].isCorrect) correctCount++;
+            }
+            userState.score = correctCount;
+            globalScoreEl.innerText = `${correctCount} / ${userState.totalQuestions}`;
+            
+            const progressPct = userState.totalQuestions > 0 ? (answeredCount / userState.totalQuestions) * 100 : 0;
+            progressBarEl.style.width = `${progressPct}%`;
+        }
+
+        // Render Navigation
+        function renderNav() {
+            navMenu.innerHTML = '';
+            exercisesData.forEach(ex => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left px-4 py-3 rounded-lg transition-colors font-medium text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700';
+                btn.id = `nav-${ex.id}`;
+                btn.innerHTML = `<span class="block">${ex.title}</span><span class="block text-xs font-normal text-gray-500">${ex.tense}</span>`;
+                btn.onclick = () => loadExercise(ex.id);
+                navMenu.appendChild(btn);
+            });
+        }
+
+        // Load Exercise
+        function loadExercise(id) {
+            currentExerciseId = id;
+            const ex = exercisesData.find(e => e.id === id);
+            
+            // Highlight nav
+            document.querySelectorAll('#nav-menu button').forEach(b => {
+                b.classList.remove('bg-indigo-100', 'text-indigo-800', 'border-l-4', 'border-indigo-600');
+            });
+            const activeBtn = document.getElementById(`nav-${id}`);
+            activeBtn.classList.add('bg-indigo-100', 'text-indigo-800', 'border-l-4', 'border-indigo-600');
+
+            // Render Content
+            let html = `
+                <div class="fade-in mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">${ex.title}: ${ex.tense}</h2>
+                    <p class="text-gray-600 bg-white p-4 rounded-lg shadow-sm border border-gray-100">${ex.description}</p>
+                </div>
+                <div class="space-y-6">
+            `;
+
+            ex.questions.forEach((q, index) => {
+                const savedAns = userState.answers[q.id];
+                const isAnswered = !!savedAns;
+                const isCorrect = isAnswered ? savedAns.isCorrect : false;
+                const statusClass = isAnswered ? (isCorrect ? 'correct-bg' : 'incorrect-bg') : 'bg-white';
+                
+                html += `
+                    <div class="p-6 rounded-xl shadow-sm border border-gray-200 transition-colors duration-300 ${statusClass} fade-in" style="animation-delay: ${index * 0.05}s" id="q-container-${q.id}">
+                        <div class="flex gap-4 items-start">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+                                ${index + 1}
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-lg font-medium text-gray-800 mb-4">${q.prompt}</p>
+                                ${renderQuestionInput(q, savedAns)}
+                                
+                                <div class="mt-4 flex items-center justify-between">
+                                    <button onclick="checkAnswer('${q.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition" ${isAnswered && isCorrect ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                                        Check Answer
+                                    </button>
+                                    <div id="feedback-${q.id}" class="text-sm font-medium ${isAnswered ? (isCorrect ? 'text-green-600' : 'text-red-600') : 'hidden'}">
+                                        ${isAnswered ? (isCorrect ? '✓ Correct!' : '✗ Try again.') : ''}
+                                    </div>
+                                </div>
+                                <div id="explanation-${q.id}" class="mt-3 p-3 bg-gray-50 rounded text-sm text-gray-600 ${isAnswered && isCorrect ? 'block' : 'hidden'}">
+                                    <strong>Explanation:</strong> ${q.explanation}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            exerciseContainer.innerHTML = html;
+        }
+
+        // Render Input based on type
+        function renderQuestionInput(q, savedAns) {
+            let inputHtml = '';
+            const userVal = savedAns ? savedAns.userAnswer : '';
+
+            if (q.type === 'mcq') {
+                inputHtml = `<div class="space-y-2">`;
+                q.options.forEach((opt, i) => {
+                    const isChecked = userVal == i ? 'checked' : '';
+                    const disabled = (savedAns && savedAns.isCorrect) ? 'disabled' : '';
+                    inputHtml += `
+                        <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition ${disabled ? 'opacity-70 cursor-default' : ''}">
+                            <input type="radio" name="q-${q.id}" value="${i}" class="w-4 h-4 text-indigo-600" ${isChecked} ${disabled}>
+                            <span>${opt}</span>
+                        </label>
+                    `;
+                });
+                inputHtml += `</div>`;
+            } else if (q.type === 'fill') {
+                const disabled = (savedAns && savedAns.isCorrect) ? 'disabled' : '';
+                inputHtml = `
+                    <div class="flex items-center flex-wrap gap-2 text-gray-700">
+                        <span>${q.textBefore}</span>
+                        <input type="text" id="input-${q.id}" value="${userVal}" class="border-b-2 border-gray-400 focus:border-indigo-600 outline-none px-2 py-1 text-center font-medium bg-transparent" placeholder="type here..." ${disabled}>
+                        <span>${q.textAfter}</span>
+                    </div>
+                `;
+            } else if (q.type === 'type') {
+                const disabled = (savedAns && savedAns.isCorrect) ? 'disabled' : '';
+                inputHtml = `
+                    <textarea id="input-${q.id}" rows="2" class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none" placeholder="Type the complete reported speech sentence here..." ${disabled}>${userVal}</textarea>
+                `;
+            }
+            return inputHtml;
+        }
+
+        // Check Answer Logic
+        function checkAnswer(qId) {
+            // Find question data
+            let question = null;
+            for (const ex of exercisesData) {
+                const q = ex.questions.find(x => x.id === qId);
+                if (q) { question = q; break; }
+            }
+            if (!question) return;
+
+            let userAnswer = '';
+            let isCorrect = false;
+
+            if (question.type === 'mcq') {
+                const selected = document.querySelector(`input[name="q-${qId}"]:checked`);
+                if (!selected) return; // Prompt user to select
+                userAnswer = selected.value;
+                isCorrect = parseInt(userAnswer) === question.answer;
+            } else if (question.type === 'fill' || question.type === 'type') {
+                const inputEl = document.getElementById(`input-${qId}`);
+                userAnswer = inputEl.value.trim();
+                if (!userAnswer) return;
+                
+                // Flexible matching for typed answers (case insensitive, remove extra spaces, allow optional punctuation)
+                const normalize = (str) => str.toLowerCase().replace(/[.,!?'"]/g, "").replace(/\s+/g, " ").trim();
+                isCorrect = normalize(userAnswer) === normalize(question.answer);
+            }
+
+            // Update State
+            userState.answers[qId] = { isCorrect, userAnswer };
+            saveState();
+
+            // Update UI
+            const container = document.getElementById(`q-container-${qId}`);
+            const feedback = document.getElementById(`feedback-${qId}`);
+            const explanation = document.getElementById(`explanation-${qId}`);
+            const btn = container.querySelector('button');
+
+            if (isCorrect) {
+                container.classList.remove('bg-white', 'incorrect-bg');
+                container.classList.add('correct-bg');
+                feedback.innerHTML = '✓ Correct!';
+                feedback.className = 'text-sm font-bold text-green-700 block';
+                explanation.classList.remove('hidden');
+                
+                // Disable inputs
+                if(question.type === 'mcq') {
+                   container.querySelectorAll('input').forEach(i => i.disabled = true);
+                } else {
+                   document.getElementById(`input-${qId}`).disabled = true;
+                }
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+
+            } else {
+                container.classList.remove('bg-white', 'correct-bg');
+                container.classList.add('incorrect-bg');
+                feedback.innerHTML = '✗ Incorrect. Try again.';
+                feedback.className = 'text-sm font-bold text-red-600 block';
+                explanation.classList.add('hidden');
+            }
+        }
+
+        // PDF Generation
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            let correctCount = userState.score;
+            let total = userState.totalQuestions;
+            let percentage = (correctCount / total) * 100 || 0;
+            
+            // Header
+            doc.setFontSize(22);
+            doc.setTextColor(79, 70, 229); // Indigo 600
+            doc.text("Reported Speech Master - Results", 20, 20);
+            
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            const date = new Date().toLocaleDateString();
+            doc.text(`Date: ${date}`, 20, 30);
+            
+            if (userState.name) {
+                doc.setFontSize(14);
+                doc.setTextColor(0, 0, 0);
+                doc.text(`Student: ${userState.name}`, 20, 38);
+            }
+
+            // Score Section
+            doc.setFontSize(16);
+            doc.setTextColor(0, 0, 0);
+            const scoreY = userState.name ? 48 : 45;
+            doc.text(`Final Score: ${correctCount} / ${total} (${percentage.toFixed(1)}%)`, 20, scoreY);
+
+            // Personalized Tips
+            doc.setFontSize(14);
+            doc.setTextColor(79, 70, 229);
+            const tipsHeaderY = userState.name ? 63 : 60;
+            doc.text("Personalized Tips for Improvement:", 20, tipsHeaderY);
+            
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            let tipsY = userState.name ? 73 : 70;
+            const lineSpacing = 7;
+            
+            if (percentage === 100) {
+                doc.text("- Perfect score! You have mastered reported speech.", 20, tipsY);
+            } else if (percentage >= 80) {
+                doc.text("- Great job! You have a solid grasp of tense shifting.", 20, tipsY);
+                tipsY += lineSpacing;
+                doc.text("- Review the few questions you missed to achieve perfection.", 20, tipsY);
+            } else if (percentage >= 50) {
+                doc.text("- Good effort, but there is room for improvement.", 20, tipsY);
+                tipsY += lineSpacing;
+                doc.text("- Remember the general rule: step one tense back (e.g., Present to Past).", 20, tipsY);
+                tipsY += lineSpacing;
+                doc.text("- Pay special attention to pronoun changes and time expressions.", 20, tipsY);
+            } else {
+                doc.text("- Keep practicing! Reported speech can be tricky.", 20, tipsY);
+                tipsY += lineSpacing;
+                doc.text("- Focus heavily on the basic rule: Present Simple -> Past Simple.", 20, tipsY);
+                tipsY += lineSpacing;
+                doc.text("- Try writing out direct speech sentences and manually converting them.", 20, tipsY);
+            }
+
+            // Tense Breakdown (Simple summary of attempts)
+            tipsY += 15;
+            doc.setFontSize(14);
+            doc.setTextColor(79, 70, 229);
+            doc.text("Exercise Breakdown:", 20, tipsY);
+            
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            tipsY += 10;
+            
+            exercisesData.forEach(ex => {
+                let exCorrect = 0;
+                let exAnswered = 0;
+                ex.questions.forEach(q => {
+                    const ans = userState.answers[q.id];
+                    if (ans) {
+                        exAnswered++;
+                        if (ans.isCorrect) exCorrect++;
+                    }
+                });
+                
+                doc.text(`${ex.title} (${ex.tense}): ${exCorrect} correct out of ${ex.questions.length}`, 20, tipsY);
+                tipsY += lineSpacing;
+                
+                // Add new page if getting too low
+                if (tipsY > 270) {
+                    doc.addPage();
+                    tipsY = 20;
+                }
+            });
+
+            // Save the PDF
+            doc.save("Reported_Speech_Results.pdf");
+        }
+
+        // Run Init
+        window.onload = init;
+    </script>
+</body>
+</html>
